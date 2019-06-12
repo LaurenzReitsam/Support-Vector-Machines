@@ -2,28 +2,28 @@
 import numpy as np
 import pandas as pd
 import cvxpy as cp
+from sys import exit
 
-class support_vector_basis_model():
+class _support_vector_basis_model():
+    "Base for the following classifiaction and regression models."
     
     def __init__(self, kernel='linear'):
         self.params = None
         self.support_vectors = None
-        self.std = 1
+        self.std = None
 
+        if kernel=='linear'    : self.kernel = self._kernel_linear
+        if kernel=='poly'      : self.kernel = self._kernel_poly
+        if kernel=='gaussian'  : self.kernel = self._kernel_gaussian
         
-        if kernel=='linear'    : self.kernel = self.kernel_linear
-        if kernel=='poly'      : self.kernel = self.kernel_poly
-        if kernel=='gaussian'  : self.kernel = self.kernel_gaussian
         
-        
-    def kernel_linear(self, X1, X2):
+    def _kernel_linear(self, X1, X2):
         return X1@X2.T
     
-    def kernel_poly(self, X1, X2, p=2.0):
+    def _kernel_poly(self, X1, X2, p=2.0):
         return (X1@X2.T + 1.0)**p
     
-    def kernel_gaussian(self, X1, X2, sigma=5.0):
-        return #np.exp(-np.linalg.norm(X1-X2)**2 / (2 * (sigma ** 2)))
+    #def _kernel_gaussian(self, X1, X2, sigma=5.0):
     
     def train(self, X, y_in, c=1):
         pass
@@ -31,20 +31,27 @@ class support_vector_basis_model():
     def predict(self, X):
         pass
        
-    def normalize(self, X, set_Value=False):
-        if set_Value: self.std = X.std()        
+    def _normalize(self, X, set_value=False):
+        if set_value: self.std = X.std(axis=0)        
         return X/self.std
+    
+    def get_support_vectors(self):
+        return self.support_vectors['X'] * self.std
             
 
 
-class suppor_vector_classifier(support_vector_basis_model):
+class suppor_vector_classifier(_support_vector_basis_model):
+    "Support-Vector classification model"
     
     def train(self, X, y_in, c=1):
         
-        n_samples, n_features = X.shape   
+        self._check_y(y_in)
         
+        X = self._normalize(X, set_value=True)
         y = np.copy(y_in)
-        y[y==0] = -1
+        
+        n_samples, n_features = X.shape   
+
         y = y.reshape([n_samples,1])   
 
         K = self.kernel(X, X)   
@@ -59,7 +66,6 @@ class suppor_vector_classifier(support_vector_basis_model):
         
         prob = cp.Problem( cp.Minimize((1/2)*cp.quad_form(a, P) - q.T@a),
                  [G@a <= h, A@a == 0.0])
-        
         
         prob.solve()
         
@@ -82,6 +88,9 @@ class suppor_vector_classifier(support_vector_basis_model):
         print(f"Number of support vectors: {mask.sum()}")
         
     def predict(self, X):
+        
+        X = self._normalize(X)
+        
         lagranges = self.params['lagranges']
         intercept = self.params['intercept']
         sv_X = self.support_vectors['X']
@@ -89,19 +98,28 @@ class suppor_vector_classifier(support_vector_basis_model):
         
         K = self.kernel(sv_X, X)
         y = K.T@(lagranges * sv_y) + intercept
+        
         return np.sign(y.reshape([-1]))
+    
+    def _check_y(self, y):
+        classes = np.unique(y)
+        assert len(classes)==2,      "y must consist of 2 classes"
+        assert abs(classes[0]) == 1, "Class labels must be 1 and -1"
+        assert abs(classes[1]) == 1, "Class labels must be 1 and -1"
+
         
         
 
-class suppor_vector_regressor(support_vector_basis_model):
+class suppor_vector_regressor(_support_vector_basis_model):
+    "Support-Vector regression model"
     
-    def train(self, X, y_in, c=1, eta = 0.1):
+    def train(self, X, y_in, c=1, eta=0.1):
         
         n_samples, n_features = X.shape
         
         y = np.copy(y_in)
         
-        X = self.normalize(X, set_Value=True)
+        X = self._normalize(X, set_value=True)
         
         y = y.reshape([n_samples])  
         
@@ -141,9 +159,10 @@ class suppor_vector_regressor(support_vector_basis_model):
         
         print(f"Number of support vectors: {mask.sum()}")
         
+        
     def predict(self, X):
         
-        X = self.normalize(X)
+        X = self._normalize(X)
 
         lagranges = self.params['lagranges']
         intercept = self.params['intercept']
