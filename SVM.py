@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import cvxpy as cp
@@ -11,19 +10,35 @@ class _support_vector_basis_model():
         self.params = None
         self.support_vectors = None
         self.std = None
+        self.kernel_param = None
 
         if kernel=='linear'    : self.kernel = self._kernel_linear
         if kernel=='poly'      : self.kernel = self._kernel_poly
-        if kernel=='gaussian'  : self.kernel = self._kernel_gaussian
+        if kernel=='rbf'       : self.kernel = self._kernel_rbf
         
         
     def _kernel_linear(self, X1, X2):
         return X1@X2.T
     
-    def _kernel_poly(self, X1, X2, p=2.0):
+    def _kernel_poly(self, X1, X2):
+        
+        p=self.kernel_param
+        if p == None: p = 2.0
+        
         return (X1@X2.T + 1.0)**p
     
-    #def _kernel_gaussian(self, X1, X2, sigma=5.0):
+    def _kernel_rbf(self, X1, X2):
+        
+        sigma=self.kernel_param
+        if sigma == None: sigma = 1/X2.shape[1]
+        
+        X1  = X1.reshape([X1.shape[0], X1.shape[1], 1])
+        X2  = X2.reshape([-1])
+
+        X = np.sqrt(((X1 - X2)**2).sum(axis=1))
+        
+        return np.exp( -X / (2*sigma**2) )
+        
     
     def train(self, X, y_in, c=1):
         pass
@@ -43,9 +58,10 @@ class _support_vector_basis_model():
 class suppor_vector_classifier(_support_vector_basis_model):
     "Support-Vector classification model"
     
-    def train(self, X, y_in, c=1):
+    def train(self, X, y_in, c=1, kernel_param=None):
         
         self._check_y(y_in)
+        self.kernel_param = kernel_param
         
         X = self._normalize(X, set_value=True)
         y = np.copy(y_in)
@@ -79,13 +95,12 @@ class suppor_vector_classifier(_support_vector_basis_model):
         sv_K = self.kernel(sv_X, sv_X)
         
         lagranges = lagranges.reshape([-1, 1])
-        
         intercept = np.mean(sv_y - sv_K.T@(lagranges[mask] * sv_y))
+        weights   = (sv_X.T@(lagranges[mask]*sv_y.reshape([-1,1]))).reshape([-1])
         
-        self.params = {'intercept':intercept, 'lagranges' : lagranges[mask]}
+        self.params = {'intercept':intercept, 'lagranges' : lagranges[mask], 'weights':weights}
         self.support_vectors = {'X': sv_X, 'y' : sv_y}
         
-        print(f"Number of support vectors: {mask.sum()}")
         
     def predict(self, X):
         
@@ -113,9 +128,10 @@ class suppor_vector_classifier(_support_vector_basis_model):
 class suppor_vector_regressor(_support_vector_basis_model):
     "Support-Vector regression model"
     
-    def train(self, X, y_in, c=1, eta=0.1):
+    def train(self, X, y_in, c=1, eta=0.1, kernel_param=None):
         
         n_samples, n_features = X.shape
+        self.kernel_param = kernel_param
         
         y = np.copy(y_in)
         
@@ -156,8 +172,6 @@ class suppor_vector_regressor(_support_vector_basis_model):
         
         self.params = {'intercept':intercept, 'lagranges' : lagranges[mask]}
         self.support_vectors = {'X': sv_X, 'y' : sv_y}
-        
-        print(f"Number of support vectors: {mask.sum()}")
         
         
     def predict(self, X):
