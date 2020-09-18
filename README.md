@@ -9,4 +9,4 @@ This project illustrates how support vector machines can be implemented from scr
 
 **Plotting.py** contains additional code to create charts.
 
-**testing_SVM.ipynb** is a Jupyter Notebook containg some basic tests and visualizations.
+**testing_SVM.ipynb** is a Jupyter Notebook containing some basic tests and visualizations.
