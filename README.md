@@ -1,12 +1,19 @@
-# Support-Vector-Machines
+# Support-Vector-Machines from Scratch
 
-Implementing SVM from scratch
+**This repository is for educational purposes only!**
 
---------------------------------
-This project illustrates how support vector machines can be implemented from scratch using python.
+It should demonstrate how Support-Vector-Machines can be implemented from scratch.
+Here, SMVs are regarded as Lagrange optimization problems (convex problem with constraint).
 
-**SVM.py** contains the main code of the SVM implementation.
+### General usage:
+````python
+import svm
 
-**Plotting.py** contains additional code to create charts.
+model = svm.RbfSupportVectorClassifier(c=1)
+model.train(X, y)
+````
 
-**testing_SVM.ipynb** is a Jupyter Notebook containing some basic tests and visualizations.
+For an example of usage, see [this Jupyter-Notebook](inspecting_svm.ipynb)
+
+The mathematical problem is solved with [CVXPY](https://www.cvxpy.org/). 
+If you have problems with the installation, have a look at [this link](http://man.hubwiz.com/docset/cvxpy.docset/Contents/Resources/Documents/install/index.html)
